@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Регистрация</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f9f9f9;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            width: 100%;
+            max-width: 400px;
+            box-sizing: border-box;
+            text-align: center;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            color: #444;
+        }
+
+        label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #218838;
+        }
+
+        .error {
+            color: red;
+            font-size: 14px;
+            margin-top: -15px;
+            margin-bottom: 20px;
+        }
+
+        #success-message {
+            margin-top: 20px;
+        }
+
+        #success-message button {
+            background-color: #007bff;
+        }
+
+        #success-message button:hover {
+            background-color: #0056b3;
+        }
+
+        #code-step, #success-message {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Регистрация</h1>
+        
+        <!-- Форма ввода телефона -->
+        <div id="phone-step">
+            <label for="phone_number">Введите номер телефона:</label>
+            <input type="text" id="phone_number" name="phone_number" required>
+            <button id="send-code">Отправить код</button>
+            <p id="phone-error" class="error"></p>
+        </div>
+        
+        <!-- Форма ввода кода -->
+        <div id="code-step">
+            <label for="code">Введите код:</label>
+            <input type="text" id="code" name="code" required>
+            <button id="verify-code">Подтвердить</button>
+            <p id="code-error" class="error"></p>
+        </div>
+        
+        <!-- Сообщение об успехе -->
+        <div id="success-message">
+            <h2>Регистрация успешна!</h2>
+            <p>Теперь вы можете войти в свой аккаунт.</p>
+            <button id="go-to-profile">Перейти в профиль</button>
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function () {
+            function getCookie(name) {
+                let cookieValue = null;
+                if (document.cookie && document.cookie !== '') {
+                    const cookies = document.cookie.split(';');
+                    for (let i = 0; i < cookies.length; i++) {
+                        const cookie = cookies[i].trim();
+                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                            break;
+                        }
+                    }
+                }
+                return cookieValue;
+            }
+            const csrftoken = getCookie('csrftoken');
+
+            // Отправка номера телефона
+            $('#send-code').on('click', function () {
+                const phoneNumber = $('#phone_number').val();
+
+                $.ajax({
+                    url: '/api/auth/phone/',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    headers: { 'X-CSRFToken': csrftoken },
+                    data: JSON.stringify({ phone_number: phoneNumber }),
+                    success: function (response) {
+                        $('#phone-step').hide();
+                        $('#code-step').show();
+                    },
+                    error: function (xhr) {
+                        $('#phone-error').text(xhr.responseJSON.detail).show();
+                    }
+                });
+            });
+
+            // Проверка кода
+            $('#verify-code').on('click', function () {
+                const phoneNumber = $('#phone_number').val();
+                const code = $('#code').val();
+
+                // Проверка кода
+                $.ajax({
+                    url: '/api/auth/code/',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    headers: { 'X-CSRFToken': csrftoken },
+                    data: JSON.stringify({ phone_number: phoneNumber, code: code }),
+                    success: function (response) {
+                        // После успешной проверки отправляем запрос на логин
+                        $.ajax({
+                            url: '/register/',
+                            method: 'POST',
+                            headers: { 'X-CSRFToken': csrftoken },
+                            data: { phone_number: phoneNumber },
+                            success: function () {
+                                $('#code-step').hide();
+                                $('#success-message').show();
+                            },
+                            error: function () {
+                                $('#code-error').text('Не удалось завершить регистрацию.').show();
+                            }
+                        });
+                    },
+                    error: function (xhr) {
+                        $('#code-error').text(xhr.responseJSON.detail).show();
+                    }
+                });
+            });
+
+            // Обработчик для кнопки "Перейти в профиль"
+            $('#go-to-profile').on('click', function () {
+                window.location.href = '/profile/';
+            });
+        });
+    </script>
+</body>
+</html>

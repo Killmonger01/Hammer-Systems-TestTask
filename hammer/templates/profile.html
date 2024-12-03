@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Профиль пользователя</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f7f7f7;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            width: 100%;
+            max-width: 400px;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        #profile-info p {
+            margin: 10px 0;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .error {
+            color: red;
+            font-size: 14px;
+            display: none;
+        }
+
+        #success-message h2 {
+            color: green;
+            text-align: center;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Профиль пользователя</h1>
+
+        <!-- Информация о пользователе -->
+        <div id="profile-info">
+            <p><strong>Номер телефона:</strong> {{ user.phone_number }}</p>
+
+            {% if user.activated_invite_code %}
+            <p><strong>Активированный инвайт-код:</strong> {{ user.activated_invite_code }}</p>
+            {% else %}
+            <p><strong>Инвайт-код:</strong> Не активирован</p>
+            {% endif %}
+        </div>
+
+        <!-- Форма ввода инвайт-кода -->
+        <div id="invite-code-section">
+            <label for="invite_code">Введите инвайт-код:</label>
+            <input type="text" id="invite_code" name="invite_code" required>
+            <button id="activate-invite-code">Активировать инвайт-код</button>
+            <p id="invite-code-error" class="error"></p>
+        </div>
+
+        <!-- Сообщение об успешной активации -->
+        <div id="success-message" class="hidden">
+            <h2>Инвайт-код активирован!</h2>
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function () {
+            // Получение CSRF-токена
+            function getCookie(name) {
+                let cookieValue = null;
+                if (document.cookie && document.cookie !== '') {
+                    const cookies = document.cookie.split(';');
+                    for (let i = 0; i < cookies.length; i++) {
+                        const cookie = cookies[i].trim();
+                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                            break;
+                        }
+                    }
+                }
+                return cookieValue;
+            }
+            const csrftoken = getCookie('csrftoken');
+
+            // Активация инвайт-кода
+            $('#activate-invite-code').on('click', function () {
+                const activated_invite_code = $('#invite_code').val();
+                const user_number = "{{ user.phone_number }}"; 
+
+                $.ajax({
+                    url: '/api/profile/',  // Эндпоинт для активации инвайт-кода
+                    method: 'POST',
+                    contentType: 'application/json',
+                    headers: { 'X-CSRFToken': csrftoken },
+                    data: JSON.stringify({ activated_invite_code: activated_invite_code, user_number: user_number }),
+                    success: function (response) {
+                        $('#invite-code-error').hide();
+                        $('#success-message').show();
+                        // Обновление информации о профиле
+                        $('#profile-info').append('<p><strong>Активированный инвайт-код:</strong> ' + activated_invite_code + '</p>');
+                        $('#invite-code-section').hide();
+                    },
+                    error: function (xhr) {
+                        $('#invite-code-error').text(xhr.responseJSON.detail).show();
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
